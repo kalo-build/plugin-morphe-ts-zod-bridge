@@ -2,8 +2,6 @@
 
 Generates TypeScript converter functions that bridge between Zod schemas (wire format) and TypeScript types (application format). The bridge operates directly on the Morphe registry and applies deterministic casing transformations — no `.map` files or manual steps required.
 
-See [ADR-001: Casing Bridge Architecture](../kalo-plugin-registry/docs/decisions/001-casing-bridge-architecture.md) for the full decision context.
-
 ## How It Works
 
 Both `plugin-morphe-ts-types` and `plugin-morphe-zod-types` read the same Morphe registry and use the shared `go-util/strcase` library for field name derivation. This plugin does the same: for each model, structure, and entity, it generates a converter function that maps fields from source casing (e.g., `snake_case` for Zod) to target casing (e.g., `camelCase` for TS types).
