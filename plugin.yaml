@@ -1,0 +1,42 @@
+name: "@kalo-build/plugin-morphe-ts-zod-bridge"
+displayName: "Morphe TS/Zod Casing Bridge"
+description: "Generates TypeScript converter functions that bridge between Zod schemas (wire format casing) and TypeScript types (application casing). Operates directly on the Morphe registry with deterministic casing transformations."
+version: "1.0.0"
+
+input:
+  format: "KA:MO1:YAML1"
+  description: "Morphe YAML schema files"
+  suggestedStore:
+    name: "KA_MO_YAML"
+    type: "localFileSystem"
+    path: "./morphe"
+
+output:
+  format: "KA:MO1:TS_BRIDGE1"
+  description: "TypeScript converter function files"
+  suggestedStore:
+    name: "KA_MO_TS_BRIDGE"
+    type: "localFileSystem"
+    path: "./src/generated/converters"
+
+configSchema:
+  sourceCasing:
+    type: string
+    description: "Field casing used by the source format (Zod schemas / wire format)."
+    enum: ["camel", "snake", "pascal"]
+    default: "snake"
+    required: true
+  targetCasing:
+    type: string
+    description: "Field casing used by the target format (TypeScript types / application format)."
+    enum: ["camel", "snake", "pascal"]
+    default: "camel"
+    required: true
+  zodSchemasImportPath:
+    type: string
+    description: "Base import path for generated Zod schema files."
+    required: true
+  tsTypesImportPath:
+    type: string
+    description: "Base import path for generated TypeScript type definition files."
+    required: true

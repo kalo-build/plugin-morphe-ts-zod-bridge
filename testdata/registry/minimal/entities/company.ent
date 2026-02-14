@@ -1,0 +1,15 @@
+name: Company
+fields:
+  ID:
+    type: Company.ID
+    attributes:
+      - immutable
+  Name:
+    type: Company.Name
+  TaxID:
+    type: Company.TaxID
+identifiers:
+  primary: ID
+related:
+  Person:
+    type: HasMany

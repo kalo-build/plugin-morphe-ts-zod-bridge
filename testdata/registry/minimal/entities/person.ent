@@ -1,0 +1,17 @@
+name: Person
+fields:
+  ID:
+    type: Person.ID
+    attributes:
+      - immutable
+  LastName:
+    type: Person.LastName
+  Nationality:
+    type: Person.Nationality
+  Email:
+    type: Person.ContactInfo.Email
+identifiers:
+  primary: ID
+related:
+  Company:
+    type: ForOne
