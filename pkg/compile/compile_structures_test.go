@@ -115,3 +115,48 @@ func (s *StructureConverterTestSuite) TestCompileAllStructureConverters_PascalTo
 	s.Contains(addressStr, "house_nr: source.HouseNr,")
 	s.Contains(addressStr, "zip_code: source.ZipCode,")
 }
+
+func (s *StructureConverterTestSuite) TestCompileAllStructureConverters_OptionalFields() {
+	// Arrange -- uses the optional testdata registry
+	optModelsDirPath := filepath.Join(s.TestDirPath, "registry", "optional", "models")
+	optEnumsDirPath := filepath.Join(s.TestDirPath, "registry", "optional", "enums")
+	optStructuresDirPath := filepath.Join(s.TestDirPath, "registry", "optional", "structures")
+	optEntitiesDirPath := filepath.Join(s.TestDirPath, "registry", "optional", "entities")
+
+	outputDir := filepath.Join(s.TestDirPath, "working-structures-optional")
+	s.Nil(os.Mkdir(outputDir, 0755))
+	defer os.RemoveAll(outputDir)
+
+	config := compile.BridgeConfig{
+		MorpheLoadRegistryConfig: rcfg.MorpheLoadRegistryConfig{
+			RegistryModelsDirPath:     optModelsDirPath,
+			RegistryEnumsDirPath:      optEnumsDirPath,
+			RegistryStructuresDirPath: optStructuresDirPath,
+			RegistryEntitiesDirPath:   optEntitiesDirPath,
+		},
+		OutputPath:           outputDir,
+		SourceCasing:         cfg.CasingSnake,
+		TargetCasing:         cfg.CasingCamel,
+		ZodSchemasImportPath: "@/schemas",
+		TsTypesImportPath:    "@/types",
+	}
+
+	// Act
+	err := compile.MorpheToBridge(config)
+	s.NoError(err)
+
+	// Verify ProfileResponse: Email+DisplayName required, AvatarURL optional
+	profilePath := filepath.Join(outputDir, "structures", "profile-response.ts")
+	s.FileExists(profilePath)
+	profileContent, readErr := os.ReadFile(profilePath)
+	s.NoError(readErr)
+	profileStr := string(profileContent)
+
+	// Required fields: direct assignment
+	s.Contains(profileStr, "    displayName: source.display_name,\n")
+	s.Contains(profileStr, "    email: source.email,\n")
+
+	// Optional field: conditional spread
+	s.Contains(profileStr, "...(source.avatar_url !== undefined && {")
+	s.Contains(profileStr, "avatarURL: source.avatar_url,")
+}

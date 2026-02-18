@@ -19,15 +19,20 @@ func TestConverterTestSuite(t *testing.T) {
 
 func (s *ConverterTestSuite) TestBuildFieldMappings_SnakeToCamel() {
 	// Arrange
-	fieldNames := []string{"FirstName", "LastName", "DateOfBirth"}
+	fields := []compile.FieldInput{
+		{Name: "FirstName"},
+		{Name: "LastName"},
+		{Name: "DateOfBirth"},
+	}
 
 	// Act
-	mappings := compile.BuildFieldMappings(fieldNames, cfg.CasingSnake, cfg.CasingCamel)
+	mappings := compile.BuildFieldMappings(fields, cfg.CasingSnake, cfg.CasingCamel)
 
 	// Assert
 	s.Require().Len(mappings, 3)
 	s.Equal("first_name", mappings[0].SourceName)
 	s.Equal("firstName", mappings[0].TargetName)
+	s.False(mappings[0].Optional)
 	s.Equal("last_name", mappings[1].SourceName)
 	s.Equal("lastName", mappings[1].TargetName)
 	s.Equal("date_of_birth", mappings[2].SourceName)
@@ -36,10 +41,13 @@ func (s *ConverterTestSuite) TestBuildFieldMappings_SnakeToCamel() {
 
 func (s *ConverterTestSuite) TestBuildFieldMappings_CamelToSnake() {
 	// Arrange
-	fieldNames := []string{"Email", "ZipCode"}
+	fields := []compile.FieldInput{
+		{Name: "Email"},
+		{Name: "ZipCode"},
+	}
 
 	// Act
-	mappings := compile.BuildFieldMappings(fieldNames, cfg.CasingCamel, cfg.CasingSnake)
+	mappings := compile.BuildFieldMappings(fields, cfg.CasingCamel, cfg.CasingSnake)
 
 	// Assert
 	s.Require().Len(mappings, 2)
@@ -51,10 +59,13 @@ func (s *ConverterTestSuite) TestBuildFieldMappings_CamelToSnake() {
 
 func (s *ConverterTestSuite) TestBuildFieldMappings_SameCasing() {
 	// Arrange
-	fieldNames := []string{"FirstName", "LastName"}
+	fields := []compile.FieldInput{
+		{Name: "FirstName"},
+		{Name: "LastName"},
+	}
 
 	// Act
-	mappings := compile.BuildFieldMappings(fieldNames, cfg.CasingCamel, cfg.CasingCamel)
+	mappings := compile.BuildFieldMappings(fields, cfg.CasingCamel, cfg.CasingCamel)
 
 	// Assert
 	s.Require().Len(mappings, 2)
@@ -66,15 +77,54 @@ func (s *ConverterTestSuite) TestBuildFieldMappings_SameCasing() {
 
 func (s *ConverterTestSuite) TestBuildFieldMappings_EmptyInput() {
 	// Arrange & Act
-	mappings := compile.BuildFieldMappings([]string{}, cfg.CasingSnake, cfg.CasingCamel)
+	mappings := compile.BuildFieldMappings([]compile.FieldInput{}, cfg.CasingSnake, cfg.CasingCamel)
 
 	// Assert
 	s.Empty(mappings)
 }
 
+func (s *ConverterTestSuite) TestBuildFieldMappings_OptionalFields() {
+	// Arrange
+	fields := []compile.FieldInput{
+		{Name: "Email"},
+		{Name: "Nickname", Optional: true},
+	}
+
+	// Act
+	mappings := compile.BuildFieldMappings(fields, cfg.CasingSnake, cfg.CasingCamel)
+
+	// Assert
+	s.Require().Len(mappings, 2)
+	s.False(mappings[0].Optional)
+	s.True(mappings[1].Optional)
+}
+
+func (s *ConverterTestSuite) TestBuildFieldMappings_WithSuffix() {
+	// Arrange
+	fields := []compile.FieldInput{
+		{Name: "PersonID", Optional: true, Suffix: "s"},
+		{Name: "Person", Optional: true, Suffix: "s"},
+	}
+
+	// Act
+	mappings := compile.BuildFieldMappings(fields, cfg.CasingSnake, cfg.CasingCamel)
+
+	// Assert
+	s.Require().Len(mappings, 2)
+	s.Equal("person_ids", mappings[0].SourceName)
+	s.Equal("personIDs", mappings[0].TargetName)
+	s.True(mappings[0].Optional)
+	s.Equal("persons", mappings[1].SourceName)
+	s.Equal("persons", mappings[1].TargetName)
+	s.True(mappings[1].Optional)
+}
+
 func (s *ConverterTestSuite) TestBuildConverterData_ModelCategory() {
 	// Arrange
-	fieldNames := []string{"FirstName", "LastName"}
+	fields := []compile.FieldInput{
+		{Name: "FirstName"},
+		{Name: "LastName"},
+	}
 	config := compile.BridgeConfig{
 		SourceCasing:         cfg.CasingSnake,
 		TargetCasing:         cfg.CasingCamel,
@@ -83,7 +133,7 @@ func (s *ConverterTestSuite) TestBuildConverterData_ModelCategory() {
 	}
 
 	// Act
-	data := compile.BuildConverterData("Person", "models", fieldNames, config)
+	data := compile.BuildConverterData("Person", "models", fields, config)
 
 	// Assert
 	s.Equal("Person", data.TypeName)
@@ -99,7 +149,10 @@ func (s *ConverterTestSuite) TestBuildConverterData_ModelCategory() {
 
 func (s *ConverterTestSuite) TestBuildConverterData_MultiWordTypeName() {
 	// Arrange
-	fieldNames := []string{"Street", "HouseNr"}
+	fields := []compile.FieldInput{
+		{Name: "Street"},
+		{Name: "HouseNr"},
+	}
 	config := compile.BridgeConfig{
 		SourceCasing:         cfg.CasingSnake,
 		TargetCasing:         cfg.CasingCamel,
@@ -108,7 +161,7 @@ func (s *ConverterTestSuite) TestBuildConverterData_MultiWordTypeName() {
 	}
 
 	// Act
-	data := compile.BuildConverterData("ContactInfo", "models", fieldNames, config)
+	data := compile.BuildConverterData("ContactInfo", "models", fields, config)
 
 	// Assert
 	s.Equal("ContactInfo", data.TypeName)
@@ -191,4 +244,134 @@ func (s *ConverterTestSuite) TestRenderConverter_SingleField() {
 	// Assert
 	s.Contains(contentStr, "name: source.name,")
 	s.Contains(contentStr, "): Simple {")
+}
+
+func (s *ConverterTestSuite) TestRenderConverter_OptionalFields() {
+	// Arrange
+	data := compile.ConverterData{
+		TypeName:            "User",
+		Category:            "models",
+		FunctionName:        "convertUser",
+		SchemaName:          "UserSchema",
+		TsTypeImportPath:    "@/types/models/user",
+		ZodSchemaImportPath: "@/schemas/models/user",
+		Fields: []compile.FieldMapping{
+			{SourceName: "email", TargetName: "email", Optional: false},
+			{SourceName: "nickname", TargetName: "nickname", Optional: true},
+			{SourceName: "organization_id", TargetName: "organizationID", Optional: true},
+		},
+	}
+
+	// Act
+	content := compile.RenderConverter(data)
+	contentStr := string(content)
+
+	// Assert: required field uses direct assignment
+	s.Contains(contentStr, "    email: source.email,\n")
+	// Assert: optional fields use conditional spread
+	s.Contains(contentStr, "    ...(source.nickname !== undefined && {\n")
+	s.Contains(contentStr, "      nickname: source.nickname,\n")
+	s.Contains(contentStr, "    }),\n")
+	s.Contains(contentStr, "    ...(source.organization_id !== undefined && {\n")
+	s.Contains(contentStr, "      organizationID: source.organization_id,\n")
+}
+
+func (s *ConverterTestSuite) TestRenderConverter_RelationshipFields() {
+	// Arrange
+	data := compile.ConverterData{
+		TypeName:            "Person",
+		Category:            "models",
+		FunctionName:        "convertPerson",
+		SchemaName:          "PersonSchema",
+		TsTypeImportPath:    "@/types/models/person",
+		ZodSchemaImportPath: "@/schemas/models/person",
+		Fields: []compile.FieldMapping{
+			{SourceName: "id", TargetName: "id"},
+			{SourceName: "company_id", TargetName: "companyID", Optional: true},
+			{SourceName: "company", TargetName: "company", Optional: true, ConverterFn: "convertCompany", ConverterImport: "./company"},
+			{SourceName: "person_ids", TargetName: "personIDs", Optional: true},
+			{SourceName: "persons", TargetName: "persons", Optional: true, ConverterFn: "convertPerson", ConverterImport: "./person", IsArray: true},
+		},
+	}
+
+	// Act
+	content := compile.RenderConverter(data)
+	contentStr := string(content)
+
+	// Assert: converter import for Company (not self-reference)
+	s.Contains(contentStr, "import { convertCompany } from './company';")
+	// Assert: no import for convertPerson (self-reference)
+	s.NotContains(contentStr, "import { convertPerson }")
+
+	// Assert: single relationship uses converter call
+	s.Contains(contentStr, "company: convertCompany(source.company),")
+	// Assert: array relationship uses .map()
+	s.Contains(contentStr, "persons: source.persons.map(convertPerson),")
+
+	// Assert: FK ID fields remain as-is (no converter call)
+	s.Contains(contentStr, "companyID: source.company_id,")
+	s.Contains(contentStr, "personIDs: source.person_ids,")
+}
+
+func (s *ConverterTestSuite) TestBuildFieldMappings_WithRelationTarget() {
+	// Arrange
+	fields := []compile.FieldInput{
+		{Name: "CompanyID", Optional: true},
+		{Name: "Company", Optional: true, RelationTarget: "Company"},
+		{Name: "PersonID", Optional: true, Suffix: "s"},
+		{Name: "Person", Optional: true, Suffix: "s", RelationTarget: "Person", IsArray: true},
+	}
+
+	// Act
+	mappings := compile.BuildFieldMappings(fields, cfg.CasingSnake, cfg.CasingCamel)
+
+	// Assert
+	s.Require().Len(mappings, 4)
+
+	// FK ID field: no converter
+	s.Equal("company_id", mappings[0].SourceName)
+	s.Empty(mappings[0].ConverterFn)
+
+	// Single relationship object: converter function + import
+	s.Equal("company", mappings[1].SourceName)
+	s.Equal("convertCompany", mappings[1].ConverterFn)
+	s.Equal("./company", mappings[1].ConverterImport)
+	s.False(mappings[1].IsArray)
+
+	// Array FK IDs: no converter
+	s.Equal("person_ids", mappings[2].SourceName)
+	s.Empty(mappings[2].ConverterFn)
+
+	// Array relationship object: converter function + import + IsArray
+	s.Equal("persons", mappings[3].SourceName)
+	s.Equal("convertPerson", mappings[3].ConverterFn)
+	s.Equal("./person", mappings[3].ConverterImport)
+	s.True(mappings[3].IsArray)
+}
+
+func (s *ConverterTestSuite) TestRenderConverter_MixedRequiredAndOptional() {
+	// Arrange
+	data := compile.ConverterData{
+		TypeName:            "Profile",
+		Category:            "structures",
+		FunctionName:        "convertProfile",
+		SchemaName:          "ProfileSchema",
+		TsTypeImportPath:    "@/types/structures/profile",
+		ZodSchemaImportPath: "@/schemas/structures/profile",
+		Fields: []compile.FieldMapping{
+			{SourceName: "display_name", TargetName: "displayName", Optional: false},
+			{SourceName: "avatar_url", TargetName: "avatarURL", Optional: true},
+			{SourceName: "email", TargetName: "email", Optional: false},
+		},
+	}
+
+	// Act
+	content := compile.RenderConverter(data)
+	contentStr := string(content)
+
+	// Assert: required fields (target is camel, source is snake)
+	s.Contains(contentStr, "    displayName: source.display_name,\n")
+	s.Contains(contentStr, "    email: source.email,\n")
+	// Assert: optional field
+	s.Contains(contentStr, "    ...(source.avatar_url !== undefined && {\n")
 }

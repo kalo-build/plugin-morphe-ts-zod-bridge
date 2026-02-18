@@ -1,0 +1,10 @@
+name: ProfileResponse
+fields:
+  Email:
+    type: String
+  DisplayName:
+    type: String
+  AvatarURL:
+    type: String
+    attributes:
+      - optional

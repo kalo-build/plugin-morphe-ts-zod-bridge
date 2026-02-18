@@ -1,0 +1,16 @@
+name: Comment
+fields:
+  ID:
+    type: Comment.ID
+    attributes:
+      - immutable
+  Content:
+    type: Comment.Content
+identifiers:
+  primary: ID
+related:
+  Commentable:
+    type: ForOnePoly
+    for:
+      - Person
+      - Company

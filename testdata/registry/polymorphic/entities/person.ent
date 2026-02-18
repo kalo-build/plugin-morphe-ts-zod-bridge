@@ -1,0 +1,15 @@
+name: Person
+fields:
+  ID:
+    type: Person.ID
+    attributes:
+      - immutable
+  Name:
+    type: Person.Name
+identifiers:
+  primary: ID
+related:
+  Note:
+    type: HasOnePoly
+    through: Commentable
+    aliased: Comment

@@ -1,0 +1,13 @@
+name: Organization
+fields:
+  ID:
+    type: Organization.ID
+    attributes:
+      - immutable
+  Name:
+    type: Organization.Name
+identifiers:
+  primary: ID
+related:
+  User:
+    type: HasMany

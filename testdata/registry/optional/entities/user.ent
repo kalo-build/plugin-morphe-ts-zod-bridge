@@ -1,0 +1,17 @@
+name: User
+fields:
+  ID:
+    type: User.ID
+    attributes:
+      - immutable
+  Email:
+    type: User.Email
+  Nickname:
+    type: User.Nickname
+    attributes:
+      - optional
+identifiers:
+  primary: ID
+related:
+  Organization:
+    type: ForOne
