@@ -2,6 +2,7 @@ package compile
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/kalo-build/go-util/core"
 	"github.com/kalo-build/morphe-go/pkg/registry"
@@ -47,8 +48,9 @@ func collectEntityFieldInputs(entity yaml.Entity) []FieldInput {
 
 // collectEntityRelationFieldInputs builds FieldInput entries for entity
 // relationship-derived fields. Entity relations reference other entities, but
-// the FK ID is derived from the underlying model's primary identifier. All
-// relationship fields are always optional.
+// the FK ID is derived from the underlying model's primary identifier. FK/ID
+// fields follow the relation's optionality attribute; relation object fields
+// are always optional per ADR-003.
 func collectEntityRelationFieldInputs(r *registry.Registry, relations map[string]yaml.EntityRelation) ([]FieldInput, error) {
 	if len(relations) == 0 {
 		return nil, nil
@@ -60,7 +62,7 @@ func collectEntityRelationFieldInputs(r *registry.Registry, relations map[string
 		rel := relations[relName]
 
 		if yamlops.IsRelationPolyFor(rel.Type) {
-			inputs = append(inputs, collectForPolyFieldInputs(relName)...)
+			inputs = append(inputs, collectForPolyFieldInputs(relName, rel.Attributes)...)
 			continue
 		}
 
@@ -87,9 +89,10 @@ func collectEntityRelationFieldInputs(r *registry.Registry, relations map[string
 			suffix = "s"
 		}
 
+		fkOptional := !isMany && hasAttribute(rel.Attributes, "optional")
 		inputs = append(inputs, FieldInput{
 			Name:     relName + primaryIDFieldName,
-			Optional: true,
+			Optional: fkOptional,
 			Suffix:   suffix,
 		})
 		inputs = append(inputs, FieldInput{
@@ -114,5 +117,9 @@ func getEntityPrimaryIdentifierFieldName(entity yaml.Entity) (string, error) {
 	if len(primaryID.Fields) != 1 {
 		return "", fmt.Errorf("entity %q primary identifier must have exactly one field", entity.Name)
 	}
-	return primaryID.Fields[0], nil
+	field := primaryID.Fields[0]
+	if strings.HasPrefix(field, "rel:") {
+		field = strings.TrimPrefix(field, "rel:") + "ID"
+	}
+	return field, nil
 }

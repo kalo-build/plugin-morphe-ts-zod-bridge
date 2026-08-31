@@ -118,21 +118,21 @@ func (s *EntityConverterTestSuite) TestCompileAllEntityConverters_RelationshipFi
 	s.NoError(readErr)
 	personStr := string(personContent)
 
+	// Required FK field (ForOne Company without optional): direct assignment
 	s.Contains(personStr, "import { convertCompany } from './company';")
-	s.Contains(personStr, "...(source.company_id !== undefined && {")
-	s.Contains(personStr, "companyID: source.company_id,")
+	s.Contains(personStr, "    companyID: source.company_id,\n")
+	// Relation object: always optional
 	s.Contains(personStr, "...(source.company !== undefined && {")
 	s.Contains(personStr, "company: convertCompany(source.company),")
 
-	// Company entity has HasMany Person -- produces pluralized optional FK + object fields
+	// Company entity has HasMany Person -- IDs required, objects optional
 	companyPath := filepath.Join(outputDir, "entities", "company.ts")
 	companyContent, readErr := os.ReadFile(companyPath)
 	s.NoError(readErr)
 	companyStr := string(companyContent)
 
 	s.Contains(companyStr, "import { convertPerson } from './person';")
-	s.Contains(companyStr, "...(source.person_ids !== undefined && {")
-	s.Contains(companyStr, "personIDs: source.person_ids,")
+	s.Contains(companyStr, "    personIDs: source.person_ids,\n")
 	s.Contains(companyStr, "...(source.persons !== undefined && {")
 	s.Contains(companyStr, "persons: source.persons.map(convertPerson),")
 }
@@ -173,10 +173,8 @@ func (s *EntityConverterTestSuite) TestCompileAllEntityConverters_PolymorphicRel
 	s.NoError(readErr)
 	commentStr := string(commentContent)
 
-	// ForOnePoly produces discriminator fields
-	s.Contains(commentStr, "...(source.commentable_id !== undefined && {")
+	// ForOnePoly produces discriminator fields (required unless relation has attributes: [optional])
 	s.Contains(commentStr, "commentableID: source.commentable_id,")
-	s.Contains(commentStr, "...(source.commentable_type !== undefined && {")
 	s.Contains(commentStr, "commentableType: source.commentable_type,")
 
 	// Assert — Person entity has HasOnePoly Note (Aliased: Comment)
@@ -186,10 +184,9 @@ func (s *EntityConverterTestSuite) TestCompileAllEntityConverters_PolymorphicRel
 	s.NoError(readErr)
 	personStr := string(personContent)
 
-	// HasOnePoly produces FK + object reference (resolved via aliased entity)
+	// HasOnePoly produces FK (required, direct assignment) + object reference (always optional)
 	s.Contains(personStr, "import { convertComment } from './comment';")
-	s.Contains(personStr, "...(source.note_id !== undefined && {")
-	s.Contains(personStr, "noteID: source.note_id,")
+	s.Contains(personStr, "    noteID: source.note_id,\n")
 	s.Contains(personStr, "...(source.note !== undefined && {")
 	s.Contains(personStr, "note: convertComment(source.note),")
 }
@@ -238,10 +235,10 @@ func (s *EntityConverterTestSuite) TestCompileAllEntityConverters_OptionalFields
 	s.Contains(userStr, "...(source.nickname !== undefined && {")
 	s.Contains(userStr, "nickname: source.nickname,")
 
-	// Relationship fields (always optional, with converter calls)
+	// Required FK field (Organization ForOne without optional): direct assignment
 	s.Contains(userStr, "import { convertOrganization } from './organization';")
-	s.Contains(userStr, "...(source.organization_id !== undefined && {")
-	s.Contains(userStr, "organizationID: source.organization_id,")
+	s.Contains(userStr, "    organizationID: source.organization_id,\n")
+	// Relation object: always optional
 	s.Contains(userStr, "...(source.organization !== undefined && {")
 	s.Contains(userStr, "organization: convertOrganization(source.organization),")
 }

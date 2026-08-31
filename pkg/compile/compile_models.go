@@ -46,8 +46,8 @@ func collectModelFieldInputs(model yaml.Model) []FieldInput {
 }
 
 // collectModelRelationFieldInputs builds FieldInput entries for relationship-
-// derived fields (FK ID + optional object reference). All relationship fields
-// are always optional.
+// derived fields (FK ID + object reference). FK/ID fields follow the relation's
+// optionality attribute; relation object fields are always optional per ADR-003.
 func collectModelRelationFieldInputs(r *registry.Registry, relations map[string]yaml.ModelRelation) ([]FieldInput, error) {
 	var inputs []FieldInput
 
@@ -56,7 +56,7 @@ func collectModelRelationFieldInputs(r *registry.Registry, relations map[string]
 		rel := relations[relName]
 
 		if yamlops.IsRelationPolyFor(rel.Type) {
-			inputs = append(inputs, collectForPolyFieldInputs(relName)...)
+			inputs = append(inputs, collectForPolyFieldInputs(relName, rel.Attributes)...)
 			continue
 		}
 
@@ -83,9 +83,10 @@ func collectModelRelationFieldInputs(r *registry.Registry, relations map[string]
 			suffix = "s"
 		}
 
+		fkOptional := !isMany && hasAttribute(rel.Attributes, "optional")
 		inputs = append(inputs, FieldInput{
 			Name:     relName + primaryIDFieldName,
-			Optional: true,
+			Optional: fkOptional,
 			Suffix:   suffix,
 		})
 		inputs = append(inputs, FieldInput{
@@ -102,10 +103,12 @@ func collectModelRelationFieldInputs(r *registry.Registry, relations map[string]
 // collectForPolyFieldInputs builds FieldInput entries for ForOnePoly/ForManyPoly
 // relationships. These produce discriminator fields ({rel}Type + {rel}ID) with
 // hardcoded suffixes — no target model lookup is needed because the ID and Type
-// suffixes are fixed by convention.
-func collectForPolyFieldInputs(relName string) []FieldInput {
+// suffixes are fixed by convention. Optional spreads match the relation's
+// `attributes: [optional]` (same rule as ForOne FKs); default is required.
+func collectForPolyFieldInputs(relName string, attributes []string) []FieldInput {
+	polyOptional := hasAttribute(attributes, "optional")
 	return []FieldInput{
-		{Name: relName + "ID", Optional: true},
-		{Name: relName + "Type", Optional: true},
+		{Name: relName + "ID", Optional: polyOptional},
+		{Name: relName + "Type", Optional: polyOptional},
 	}
 }

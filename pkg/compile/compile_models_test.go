@@ -166,27 +166,26 @@ func (s *ModelConverterTestSuite) TestCompileAllModelConverters_RelationshipFiel
 	s.NoError(readErr)
 	personStr := string(personContent)
 
-	// Person has ForOne Company and HasOne ContactInfo - both produce optional FK + object fields
+	// Person has ForOne Company (required) and HasOne ContactInfo (required)
+	// Required FK fields use direct assignment; relation objects are always optional
 	s.Contains(personStr, "import { convertCompany } from './company';")
 	s.Contains(personStr, "import { convertContactInfo } from './contact-info';")
-	s.Contains(personStr, "...(source.company_id !== undefined && {")
-	s.Contains(personStr, "companyID: source.company_id,")
+	s.Contains(personStr, "    companyID: source.company_id,\n")
 	s.Contains(personStr, "...(source.company !== undefined && {")
 	s.Contains(personStr, "company: convertCompany(source.company),")
-	s.Contains(personStr, "...(source.contact_info_id !== undefined && {")
-	s.Contains(personStr, "contactInfoID: source.contact_info_id,")
+	s.Contains(personStr, "    contactInfoID: source.contact_info_id,\n")
 	s.Contains(personStr, "...(source.contact_info !== undefined && {")
 	s.Contains(personStr, "contactInfo: convertContactInfo(source.contact_info),")
 
 	// Verify Company model converter includes HasMany Person relationship (pluralized)
+	// HasMany IDs are always required; relation objects are always optional
 	companyPath := filepath.Join(outputDir, "models", "company.ts")
 	companyContent, readErr := os.ReadFile(companyPath)
 	s.NoError(readErr)
 	companyStr := string(companyContent)
 
 	s.Contains(companyStr, "import { convertPerson } from './person';")
-	s.Contains(companyStr, "...(source.person_ids !== undefined && {")
-	s.Contains(companyStr, "personIDs: source.person_ids,")
+	s.Contains(companyStr, "    personIDs: source.person_ids,\n")
 	s.Contains(companyStr, "...(source.persons !== undefined && {")
 	s.Contains(companyStr, "persons: source.persons.map(convertPerson),")
 }
@@ -227,10 +226,8 @@ func (s *ModelConverterTestSuite) TestCompileAllModelConverters_PolymorphicRelat
 	s.NoError(readErr)
 	commentStr := string(commentContent)
 
-	// ForOnePoly produces discriminator fields: CommentableID and CommentableType
-	s.Contains(commentStr, "...(source.commentable_id !== undefined && {")
+	// ForOnePoly produces discriminator fields: CommentableID and CommentableType (required unless relation has attributes: [optional])
 	s.Contains(commentStr, "commentableID: source.commentable_id,")
-	s.Contains(commentStr, "...(source.commentable_type !== undefined && {")
 	s.Contains(commentStr, "commentableType: source.commentable_type,")
 
 	// Assert — Person model has HasOnePoly Note (Aliased: Comment)
@@ -240,10 +237,9 @@ func (s *ModelConverterTestSuite) TestCompileAllModelConverters_PolymorphicRelat
 	s.NoError(readErr)
 	personStr := string(personContent)
 
-	// HasOnePoly produces FK + object reference (same as HasOne, resolved via aliased model)
+	// HasOnePoly produces FK (required, direct assignment) + object reference (always optional)
 	s.Contains(personStr, "import { convertComment } from './comment';")
-	s.Contains(personStr, "...(source.note_id !== undefined && {")
-	s.Contains(personStr, "noteID: source.note_id,")
+	s.Contains(personStr, "    noteID: source.note_id,\n")
 	s.Contains(personStr, "...(source.note !== undefined && {")
 	s.Contains(personStr, "note: convertComment(source.note),")
 }
@@ -294,10 +290,10 @@ func (s *ModelConverterTestSuite) TestCompileAllModelConverters_OptionalFields()
 	s.Contains(userStr, "...(source.nickname !== undefined && {")
 	s.Contains(userStr, "nickname: source.nickname,")
 
-	// Relationship fields: always optional, with converter calls
+	// Required FK field (Organization ForOne without optional): direct assignment
 	s.Contains(userStr, "import { convertOrganization } from './organization';")
-	s.Contains(userStr, "...(source.organization_id !== undefined && {")
-	s.Contains(userStr, "organizationID: source.organization_id,")
+	s.Contains(userStr, "    organizationID: source.organization_id,\n")
+	// Relation object: always optional
 	s.Contains(userStr, "...(source.organization !== undefined && {")
 	s.Contains(userStr, "organization: convertOrganization(source.organization),")
 }
